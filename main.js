@@ -1,37 +1,58 @@
-const recordAudio = () =>
-  new Promise(async (resolve) => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mediaRecorder = new MediaRecorder(stream);
-    const audioChunks = [];
+console.log("hey");
+const micBtn = document.querySelector("#mic");
 
-    mediaRecorder.addEventListener("dataavailable", (event) => {
-      audioChunks.push(event.data);
-    });
+const playBack = document.querySelector(".playback");
 
-    const start = () => mediaRecorder.start();
+micBtn.addEventListener("click", toggleMic);
 
-    const stop = () =>
-      new Promise((resolve) => {
-        mediaRecorder.addEventListener("stop", () => {
-          const audioBlob = new Blob(audioChunks);
-          const audioUrl = URL.createObjectURL(audioBlob);
-          const audio = new Audio(audioUrl);
-          const play = () => audio.play();
-          resolve({ audioBlob, audioUrl, play });
-        });
+let isRecording = false;
+let isCanRecord = false;
 
-        mediaRecorder.stop();
-      });
+let recorder = null;
 
-    resolve({ start, stop });
-  });
+let chunks = [];
 
-const sleep = (time) => new Promise((resolve) => setTimeout(resolve, time));
+const setUpAudio = () => {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then(setUpStream)
+      .catch((err) => console.log(err));
+  }
+};
 
-(async () => {
-  const recorder = await recordAudio();
-  recorder.start();
-  await sleep(3000);
-  const audio = await recorder.stop();
-  audio.play();
-})();
+setUpAudio();
+
+function setUpStream(stream) {
+  recorder = new MediaRecorder(stream);
+
+  console.log(stream);
+
+  recorder.ondataavailable = (e) => {
+    chunks.push(e?.data);
+  };
+  recorder.onstop = (e) => {
+    const blob = new Blob(chunks);
+    chunks = [];
+
+    console.log(blob)
+
+    const audioUrl = window.URL.createObjectURL(blob);
+    playBack.src = audioUrl;
+  };
+  isCanRecord = true;
+}
+
+function toggleMic() {
+  if (!isCanRecord) return;
+
+  isRecording = !isRecording;
+
+  if (isRecording) {
+    recorder.start();
+    micBtn.classList.add("isRecording");
+  } else {
+    recorder.stop();
+    micBtn.classList.add("isRecording");
+  }
+}
